@@ -1,0 +1,119 @@
+#!/usr/bin/env ruby
+# vim: set ts=2 sw=2
+
+# This tool is a tool to generate user data and validate that data against a
+# list of checksums. I aim to make it fully automate-able as well as easy
+# enough for anyone to use.
+
+require 'readline'
+include Readline
+
+# print the usage menu for interactive mode
+def print_menu
+  print "\n"
+  puts "Menu: "
+  puts "gen\tGenerate data"
+  puts "mksum\tGenerate checksums for data"
+  puts "verify\tVerify data"
+  puts "quit\tQuit"
+  print "\n"
+end
+
+# menu to generate the large amounts of data interactive mode
+def generate_data_interactively
+  print "\n"
+  puts "-- Press CTRL+C to cancel --"
+  print "\n"
+
+  begin
+    puts "Minimum filesize in kilobytes? "
+    minsize = readline("# ", TRUE).to_i
+
+    puts "Maximum filesize in kilobytes? "
+    maxsize = readline("# ", TRUE).to_i
+
+    puts "Number of files? "
+    filenum = readline("# ", TRUE).to_i
+
+    puts "Number of directories? "
+    dirnum = readline("# ", TRUE).to_i
+  rescue Interrupt
+    return
+  rescue
+    STDERR.puts "Error: #{$!}"
+  end
+
+  # files per directory
+  fpd = filenum / dirnum
+
+  print "\n"
+  print "[+] Okay, let me make sure I get it right, you want #{filenum} total "
+  print "files to be put in #{dirnum} directories, with sizes ranging between "
+  print "#{minsize}kb and #{maxsize}kb."
+  print "\n\n"
+  print "This will put around #{fpd} files in each directory"
+  print "\n\n"
+  print "Are these settings correct?\n"
+
+  begin
+    confirm = readline("[y/n] ", TRUE)
+  rescue Interrupt
+    return
+  rescue
+    STDERR.puts "Error: #{$!}"
+  end
+  
+  if confirm != "y"
+    puts "Abort!"
+    return
+  end
+end
+
+# actually generate the data
+def generate_data(minsize, maxsize, filenum, dirnum)
+
+end
+
+# create checksums for data
+def create_checksums
+
+end
+
+# verify data checksums
+def verify_checksums
+
+end
+
+
+# Main interaction loop
+if ARGV.size < 1
+  # interactive mode
+  loop {
+    print_menu()
+    begin
+      cmd = readline("ds> ", TRUE)
+    rescue Interrupt 
+      exit(0)
+    rescue
+      STDERR.puts "Error: #{$!}"
+    end
+
+    case cmd
+      when "quit":
+        puts "Bye!"
+        exit(0)
+      when "q":
+        puts "Bye!"
+        exit(0)
+      when "gen":
+        generate_data_interactively()
+      when "mksum":
+        create_checksums()
+      when "verify":
+        verify_checksums()
+    end
+  }
+  exit(0)
+end
+
+puts "Usage: "  
