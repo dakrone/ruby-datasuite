@@ -26,6 +26,9 @@ def generate_data_interactively
   print "\n"
 
   begin
+    puts "Where do you want to create the data? "
+    loc = readline("> ", TRUE)
+
     puts "Minimum filesize in kilobytes? "
     minsize = readline("# ", TRUE).to_i
 
@@ -47,11 +50,12 @@ def generate_data_interactively
   fpd = filenum / dirnum
 
   print "\n"
-  print "[+] Okay, let me make sure I get it right, you want #{filenum} total "
-  print "files to be put in #{dirnum} directories, with sizes ranging between "
-  print "#{minsize}kb and #{maxsize}kb."
+  print "[+] Okay, let me make sure I get it right:\nYou want #{filenum} total "
+  print "files to be put in #{dirnum} subdirectories, with sizes ranging "
+  print "between #{minsize}kb and #{maxsize}kb."
   print "\n\n"
-  print "This will put around #{fpd} files in each directory"
+  print "This will put around #{fpd} files in each directory.\n"
+  print "All these files will be in the '#{loc}' directory."
   print "\n\n"
   print "Are these settings correct?\n"
 
@@ -67,10 +71,33 @@ def generate_data_interactively
     puts "Abort!"
     return
   end
+
+  generate_data(loc, minsize, maxsize, filenum, dirnum)
 end
 
 # actually generate the data
-def generate_data(minsize, maxsize, filenum, dirnum)
+def generate_data(loc, minsize, maxsize, filenum, dirnum)
+  print "\n"
+  puts "[+] Checking paramaters..."
+  if !File.exist?(loc) and !File.directory?(loc)
+    puts "\n[Error] File #{loc} doesn't exist or isn't a directory!"
+    return
+  end
+  if minsize < 1 or maxsize < minsize or filenum < 1
+    puts "\n[Error] I can't work with sizes like that!"
+    return
+  end
+  if filenum > dirnum
+    puts "\n[Error] Can't have more files than directories!"
+    return
+  end
+  puts "[+] Checking to make sure you have dd..."
+  system("which dd > /dev/null")
+  if ($? != 0)
+    puts "\n[Error] I can't find the 'dd' program!"
+    return
+  end
+  puts "[+] Generating data..."
 
 end
 
