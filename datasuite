@@ -7,6 +7,8 @@
 
 require 'readline'
 include Readline
+require 'fileutils'
+srand()
 
 # print the usage menu for interactive mode
 def print_menu
@@ -77,6 +79,7 @@ end
 
 # actually generate the data
 def generate_data(loc, minsize, maxsize, filenum, dirnum)
+  fpd = filenum / dirnum
   print "\n"
   puts "[+] Checking paramaters..."
   if !File.exist?(loc) and !File.directory?(loc)
@@ -87,8 +90,8 @@ def generate_data(loc, minsize, maxsize, filenum, dirnum)
     puts "\n[Error] I can't work with sizes like that!"
     return
   end
-  if filenum > dirnum
-    puts "\n[Error] Can't have more files than directories!"
+  if dirnum > filenum
+    puts "\n[Error] Can't have more directories than files!"
     return
   end
   puts "[+] Checking to make sure you have dd..."
@@ -97,7 +100,42 @@ def generate_data(loc, minsize, maxsize, filenum, dirnum)
     puts "\n[Error] I can't find the 'dd' program!"
     return
   end
+
   puts "[+] Generating data..."
+
+  fncount = 0
+
+  for i in 0..(dirnum-1) do
+    dname = loc + "/dir" + ("0"*(8-(i.to_s.length))).to_s + i.to_s
+    puts "[+] Making #{dname} and populating it with data..."
+    if File.directory?(dname)
+      puts "directory #{dname} already exists, skipping"
+    else
+      begin
+        FileUtils.mkdir_p(dname)
+      rescue
+        puts "[Error] Creating directory: #{$!}"
+      end
+    end
+
+    for j in 0..(fpd-1) do
+      fname = dname + "/file" + ("0"*(8-(fncount.to_s.length))).to_s + fncount.to_s
+      fncount = fncount + 1
+      fsize = minsize + rand(maxsize-minsize)
+      begin
+        system("dd if=/dev/urandom of=#{fname} bs=1024 count=#{fsize} 2> /dev/null")
+      rescue
+        puts "[Error] Creating file: #{$!}"
+      end
+      if $? != 0
+        puts "There was an error creating '#{fname}'"
+      end
+
+    end
+
+  end
+
+  puts "[+] Done generating data."
 
 end
 
