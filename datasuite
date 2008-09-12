@@ -84,10 +84,10 @@ def generate_data(loc, minsize, maxsize, filenum, dirnum)
   fpd = filenum / dirnum
   print "\n"
   puts "[+] Checking paramaters..."
-  if !File.exist?(loc) and !File.directory?(loc)
-    puts "\n[Error] File #{loc} doesn't exist or isn't a directory!"
-    return
-  end
+  #if !File.exist?(loc) and !File.directory?(loc)
+    #puts "\n[Error] File #{loc} doesn't exist or isn't a directory!"
+    #return
+  #end
   if minsize < 1 or maxsize < minsize or filenum < 1
     puts "\n[Error] I can't work with sizes like that!"
     return
@@ -268,11 +268,65 @@ def verify_checksums_interactively
 end
 
 # verify data checksums
-def verify_checksums(dir)
+def verify_checksums(file)
+  md5prog = "md5"
+
+  print "\n"
+  puts "[+] Checking paramaters..."
+  if !File.exist?(file) and !File.file?(file)
+    puts "\n[Error] File #{file} doesn't exist or isn't a file!"
+    return false
+  end
+  if !File.readable?(file)
+    puts "\n[Error] File #{file} isn't readable by me!"
+    return false
+  end
+
+  puts "[+] Checking to make sure you have md5 or md5sum..."
+  system("which md5 > /dev/null")
+  if ($? != 0)
+    puts "\n[Warning] I couldn't find the 'md5' program!"
+    system("which md5sum > /dev/null")
+    if ($? != 0)
+      puts "\n[Error] I couldn't find the 'md5sum' program either!"
+      return false
+    else
+      md5prog = "md5sum"
+    end
+  end
+
+  puts "[+] Verify data with checksums..."
+
+  diffcount = 0
+
+  f = File.open(file)
+  f.each { |line|
+    # example line:
+    #MD5 (files/dir00000004/file00000996) = dd6a86dcb73ab354ee6ae2c73105bea6
+    if line =~ /\(([\s\S]+)\)\s=\s([\s\S]+)$/
+      fn = $1
+      sum = $2.chomp
+      crc = `#{md5prog} #{fn}`
+      crc =~ /\(([\s\S]+)\)\s=\s([\s\S]+)$/
+      newsum = $2.chomp
+      if sum != newsum
+        puts "[!] File #{fn} is different! (expected: #{sum}, actual: #{newsum})"
+        diffcount = diffcount + 1
+      end
+    else
+      puts "Incorrectly formatted md5sum file!"
+      return false
+    end
+  }
+
+  puts "[+] Done. #{diffcount} files were different"
+
+  return diffcount
 
 end
 
 
+dc = 0
 # Main interaction loop
 if ARGV.size < 1
   # interactive mode
@@ -298,10 +352,10 @@ if ARGV.size < 1
     when "mksum":
       create_checksums_interactively()
     when "verify":
-      verify_checksums_interactively()
+      dc = verify_checksums_interactively()
     end
   }
-  exit(0)
+  exit(dc)
 end
 
 # otherwise, parse command arguments
@@ -323,8 +377,9 @@ if opts[:gen] and !opts[:crc] and !opts[:verify]
     puts "Not enough arguments for generate!"
     puts "\t./datasuite -g \"/path/for/data\" 1000 20 5 10"
     puts "\"Put 1000 files in 20 directories that are between 5 and 10 kb in size"
+  else
+    generate_data(ARGV[0],ARGV[3].to_i,ARGV[4].to_i,ARGV[1].to_i,ARGV[2].to_i)
   end
-  generate_data(ARGV[0],ARGV[3],ARGV[4],ARGV[1],ARGV[2])
   exit(0)
 end
 
@@ -333,6 +388,8 @@ if opts[:crc] and !opts[:gen] and !opts[:verify]
     puts "Not enough arguments for checksum!"
     puts "\t./datasuite -c \"/path/to/filedir\" \"/path/to/sums_output_file.txt\""
     puts "\"Generate checksums for all the files in /path/to/filedir, output to output file\""
+  else
+    create_checksums(ARGV[0],ARGV[1])
   end
   exit(0)
 end
@@ -342,9 +399,11 @@ if opts[:verify] and !opts[:crc] and !opts[:gen]
     puts "Not enough arguments for verify!"
     puts "\t./datasuite -v \"/path/to/md5sumfile.txt\""
     puts "\"Validate all the files in /path/to/md5sumfile.txt.\"\nThis assumes the MD5 (/path/to/file) = 123.. is correct"
+  else
+    dc = verify_checksums(ARGV[0])
   end
-  exit(0)
+  exit(dc)
 end
 
 puts "Um yea, you didn't run the script correctly, sorry!"
-exit(1)
+exit(255)

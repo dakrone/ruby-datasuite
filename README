@@ -1,1 +1,9 @@
-<insert readme here>
+Datasuite:
+
+./datasuite -h
+
+This will display the command-line (automation) flags
+
+./datasuite
+
+This will run datasuite in interactive mode.
