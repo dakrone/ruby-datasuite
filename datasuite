@@ -8,6 +8,7 @@
 require 'readline'
 include Readline
 require 'fileutils'
+require 'optparse'
 srand()
 
 # print the usage menu for interactive mode
@@ -56,7 +57,8 @@ def generate_data_interactively
   print "files to be put in #{dirnum} subdirectories, with sizes ranging "
   print "between #{minsize}kb and #{maxsize}kb."
   print "\n\n"
-  print "This will put around #{fpd} files in each directory.\n"
+  print "This will put #{fpd} files in each directory.\n"
+  print "All extra files will be rounded off\n"
   print "All these files will be in the '#{loc}' directory."
   print "\n\n"
   print "Are these settings correct?\n"
@@ -139,13 +141,134 @@ def generate_data(loc, minsize, maxsize, filenum, dirnum)
 
 end
 
+# create checksums for data interactively
+def create_checksums_interactively
+
+  begin
+    puts "What base directory do you want to start the chceksumming?? "
+    loc = readline("> ", TRUE)
+
+    puts "What file do you want to store the results in?? "
+    outputfile = readline("> ", TRUE)
+  rescue Interrupt
+    return
+  rescue
+    STDERR.puts "Error: #{$!}"
+  end
+
+  print "\n"
+  print "[+] Okay, let me make sure I get it right:\n"
+  print "You want me to checksum all the files under '#{loc}', saving all\n"
+  print "the results into a file called '#{outputfile}'."
+  print "\n\n"
+  print "Are these settings correct?\n"
+
+  begin
+    confirm = readline("[y/n] ", TRUE)
+  rescue Interrupt
+    return
+  rescue
+    STDERR.puts "Error: #{$!}"
+  end
+  
+  if confirm != "y"
+    puts "Abort!"
+    return
+  end
+
+  create_checksums(loc,outputfile)
+
+end
+
 # create checksums for data
-def create_checksums
+def create_checksums(dir, outputfile)
+  md5prog = "md5"
+
+  print "\n"
+  puts "[+] Checking paramaters..."
+  if !File.exist?(dir) and !File.directory?(dir)
+    puts "\n[Error] File #{dir} doesn't exist or isn't a directory!"
+    return
+  end
+  if File.exist?(outputfile)
+    puts "\n[Error] Output file #{outputfile} already exists! In the interest of safety, I'm not going to clobber it..."
+    return
+  end
+
+  puts "[+] Checking to make sure you have md5 or md5sum..."
+  system("which md5 > /dev/null")
+  if ($? != 0)
+    puts "\n[Warning] I couldn't find the 'md5' program!"
+    system("which md5sum > /dev/null")
+    if ($? != 0)
+      puts "\n[Error] I couldn't find the 'md5sum' program either!"
+      return
+    else
+      md5prog = "md5sum"
+    end
+  end
+
+  puts "[+] Checksumming data..."
+
+  files = File.join("**", dir, "**", "*")
+
+  Dir.glob(files) { |file|
+    if !File.file?(file)
+      next
+    end
+    begin
+      system("#{md5prog} #{file} >> #{outputfile}")
+    rescue
+      puts "[Error] Checksumming file: #{$!}"
+    end
+    if $? != 0
+      puts "There was an error checksumming '#{file}'"
+    end
+  }
+
+  puts "[+] Done."
+
+end
+
+# verify data checksums interactively
+def verify_checksums_interactively
+
+  begin
+    puts "What file contains all the md5sums? (the paths in this file must be correct)"
+    loc = readline("> ", TRUE)
+
+  rescue Interrupt
+    return
+  rescue
+    STDERR.puts "Error: #{$!}"
+  end
+
+  print "\n"
+  print "[+] Okay, let me make sure I get it right:\n"
+  print "You want me to check all the files in '#{loc}' and make sure their\n"
+  print "md5 sums match up."
+  print "\n\n"
+  print "Is this correct?\n"
+
+  begin
+    confirm = readline("[y/n] ", TRUE)
+  rescue Interrupt
+    return
+  rescue
+    STDERR.puts "Error: #{$!}"
+  end
+
+  if confirm != "y"
+    puts "Abort!"
+    return
+  end
+
+  verify_checksums(loc)
 
 end
 
 # verify data checksums
-def verify_checksums
+def verify_checksums(dir)
 
 end
 
@@ -164,21 +287,64 @@ if ARGV.size < 1
     end
 
     case cmd
-      when "quit":
-        puts "Bye!"
-        exit(0)
-      when "q":
-        puts "Bye!"
-        exit(0)
-      when "gen":
-        generate_data_interactively()
-      when "mksum":
-        create_checksums()
-      when "verify":
-        verify_checksums()
+    when "quit":
+      puts "Bye!"
+      exit(0)
+    when "q":
+      puts "Bye!"
+      exit(0)
+    when "gen":
+      generate_data_interactively()
+    when "mksum":
+      create_checksums_interactively()
+    when "verify":
+      verify_checksums_interactively()
     end
   }
   exit(0)
 end
 
-puts "Usage: "  
+# otherwise, parse command arguments
+opts = {}
+OptionParser.new do |o| 
+  o.on("-g", "--generate", "Generate data") do |g|
+    opts[:gen] = g
+  end
+  o.on("-c", "--checksum", "Create checksums") do |c|
+    opts[:crc] = c
+  end
+  o.on("-v", "--verify", "Verify checksums") do |v|
+    opts[:verify] = v
+  end
+end.parse!
+
+if opts[:gen] and !opts[:crc] and !opts[:verify]
+  if ARGV.length < 5
+    puts "Not enough arguments for generate!"
+    puts "\t./datasuite -g \"/path/for/data\" 1000 20 5 10"
+    puts "\"Put 1000 files in 20 directories that are between 5 and 10 kb in size"
+  end
+  generate_data(ARGV[0],ARGV[3],ARGV[4],ARGV[1],ARGV[2])
+  exit(0)
+end
+
+if opts[:crc] and !opts[:gen] and !opts[:verify]
+  if ARGV.length < 2
+    puts "Not enough arguments for checksum!"
+    puts "\t./datasuite -c \"/path/to/filedir\" \"/path/to/sums_output_file.txt\""
+    puts "\"Generate checksums for all the files in /path/to/filedir, output to output file\""
+  end
+  exit(0)
+end
+
+if opts[:verify] and !opts[:crc] and !opts[:gen]
+  if ARGV.length < 1
+    puts "Not enough arguments for verify!"
+    puts "\t./datasuite -v \"/path/to/md5sumfile.txt\""
+    puts "\"Validate all the files in /path/to/md5sumfile.txt.\"\nThis assumes the MD5 (/path/to/file) = 123.. is correct"
+  end
+  exit(0)
+end
+
+puts "Um yea, you didn't run the script correctly, sorry!"
+exit(1)
