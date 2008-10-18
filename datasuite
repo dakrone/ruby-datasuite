@@ -145,7 +145,7 @@ end
 def create_checksums_interactively
 
   begin
-    puts "What base directory do you want to start the chceksumming?? "
+    puts "What base directory do you want to start the checksumming?? "
     loc = readline("> ", TRUE)
 
     puts "What file do you want to store the results in?? "
