@@ -303,12 +303,23 @@ def verify_checksums(file)
   f.each { |line|
     # example line:
     #MD5 (files/dir00000004/file00000996) = dd6a86dcb73ab354ee6ae2c73105bea6
+    #48bc94cb788157ea65b498310aefc32d  ./lee/dir00000001/file00000007
     if line =~ /\(([\s\S]+)\)\s=\s([\s\S]+)$/
       fn = $1
       sum = $2.chomp
       crc = `#{md5prog} #{fn}`
       crc =~ /\(([\s\S]+)\)\s=\s([\s\S]+)$/
       newsum = $2.chomp
+      if sum != newsum
+        puts "[!] File #{fn} is different! (expected: #{sum}, actual: #{newsum})"
+        diffcount = diffcount + 1
+      end
+    elsif line =~ /([\s\S]+)\s([\s\S]+)$/
+      fn = $2.chomp
+      sum = $1
+      crc = `#{md5prog} #{fn}`
+      crc =~ /([\s\S]+)\s([\s\S]+)$/
+      newsum = $1
       if sum != newsum
         puts "[!] File #{fn} is different! (expected: #{sum}, actual: #{newsum})"
         diffcount = diffcount + 1
